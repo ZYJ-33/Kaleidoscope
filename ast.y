@@ -51,7 +51,8 @@
 %nterm<std::unique_ptr<ExprAST>> expr
 %nterm<std::unique_ptr<std::vector<std::unique_ptr<ExprAST>>>> exprs_with_comma
 %nterm<std::unique_ptr<std::vector<std::unique_ptr<std::string>>>> ids_with_comma
-
+%nterm<std::unique_ptr<DeclAST>> decl
+%nterm<std::unique_ptr<std::vector<std::unique_ptr<DeclAST>>>> decls
 
 %right ASSGIN
 %left EQUAL UNEQUAL
@@ -62,7 +63,14 @@
 %right COMMA
 
 %%
-start : funcs {drv.funcs = $1;}
+start : decls funcs {drv.decls = $1; drv.funcs = $2;}
+      ;
+
+decl  : EXTERN proto {$$ = std::unique_ptr<DeclAST>(new DeclAST($2));}
+      ;
+
+decls : decl decls {$2->push_back($1); $$ = $2;}
+      | {$$ = std::unique_ptr<std::vector<std::unique_ptr<DeclAST>>>(new std::vector<std::unique_ptr<DeclAST>>());}
       ;
 
 funcs : func funcs {$2->push_back($1); $$ = $2;}
@@ -71,6 +79,7 @@ funcs : func funcs {$2->push_back($1); $$ = $2;}
 
 func : proto expr {$$ = std::unique_ptr<FuncAST>(new FuncAST($1, $2));}
      ;
+
 
 proto : DEF ID LEFT_PARA ids_with_comma RIGHT_PARA {$$ = std::unique_ptr<PrototypeAST>(new PrototypeAST($2, $4));}
       ;

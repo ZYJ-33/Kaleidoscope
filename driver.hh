@@ -10,6 +10,7 @@ class Driver
     public: 
             std::string file;
             std::unique_ptr<std::vector<std::unique_ptr<FuncAST>>> funcs;
+            std::unique_ptr<std::vector<std::unique_ptr<DeclAST>>> decls;
             Scanner scanner;
             yy::parser parser;
     public:
