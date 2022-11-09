@@ -1,23 +1,41 @@
 #include "./node.h"
 #include "./ast.tab.hh"
 
+llvm::Function* getFunction(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab,
+                            std::map<std::string, std::unique_ptr<PrototypeAST>>* decls, const std::string& name)
+{
+        llvm::Function* func = mod->getFunction(name);
+        if(func == nullptr)
+        {
+            auto res = decls->find(name);
+            if(res != decls->end())
+                    return res->second->gencode(ctx, mod, builder, symtab, decls);
+            return nullptr;
+            
+        }
+        return func;
+}
+
 llvm::Value* logerror(const char* error)
 {
     std::cerr<<"error: "<<error<<std::endl;
     return nullptr;
 }
 
-llvm::Value* AssignExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab)
+llvm::Value* AssignExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder,
+                                    std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls)
 {
     return nullptr;
 }
 
-llvm::Value* NumberExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab)
+llvm::Value* NumberExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, 
+                                    std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls)
 {
      return llvm::ConstantFP::get(*ctx, llvm::APFloat(val));
 }
 
-llvm::Value* VariableExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab)
+llvm::Value* VariableExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder,
+                                      std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls)
 {
         llvm::Value* val = (*symtab)[*id];
         if(val == nullptr)
@@ -25,10 +43,11 @@ llvm::Value* VariableExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod,
         return val;
 }
 
-llvm::Value* BinOpExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab)
+llvm::Value* BinOpExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder,
+                                   std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls)
 {
-     llvm::Value* left_res = left->gencode(ctx, mod, builder, symtab);
-     llvm::Value* right_res = right->gencode(ctx, mod, builder, symtab);
+     llvm::Value* left_res = left->gencode(ctx, mod, builder, symtab, decls);
+     llvm::Value* right_res = right->gencode(ctx, mod, builder, symtab, decls);
      
      switch(op)
      {
@@ -50,19 +69,22 @@ llvm::Value* BinOpExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, ll
      return nullptr;
 }
 
-llvm::Value* IfExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab)
+llvm::Value* IfExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder,
+                                std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls)
 {
     return nullptr;
 }
 
-llvm::Value* IfElseExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab)
+llvm::Value* IfElseExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder,
+                                    std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls)
 {
     return nullptr;
 }
 
-llvm::Value* CallExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab)
+llvm::Value* CallExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, 
+                                  std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls)
 {
-    llvm::Function* callee = mod->getFunction(*id);
+    llvm::Function* callee = getFunction(ctx, mod, builder, symtab, decls, *id);
     if(callee == nullptr)
             return logerror("calling a undef func");
     if(callee->arg_size() != exprs->size())
@@ -73,13 +95,14 @@ llvm::Value* CallExprAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llv
     for(uint64_t i=0;i<exprs->size(); i++)
     {
         auto expr_ptr = (*exprs)[i].get();
-        argvs.push_back(expr_ptr->gencode(ctx, mod, builder, symtab));
+        argvs.push_back(expr_ptr->gencode(ctx, mod, builder, symtab, decls));
     }
 
     return builder->CreateCall(callee, argvs, "calltmp");
 }
 
-llvm::Function* PrototypeAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab)
+llvm::Function* PrototypeAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, 
+                                      std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls)
 {
     std::vector<llvm::Type*> arg_types(paras->size(), llvm::Type::getDoubleTy(*ctx));
     llvm::FunctionType* func_type = llvm::FunctionType::get(llvm::Type::getDoubleTy(*ctx), arg_types, false);
@@ -90,18 +113,21 @@ llvm::Function* PrototypeAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod,
     return func;
 }
 
-llvm::Function* DeclAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab)
+llvm::Function* DeclAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder,
+                                 std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls)
 {
-    return decl->gencode(ctx, mod, builder, symtab);    
+    auto save = decl->gencode(ctx, mod, builder, symtab, decls);    
+    decls->insert(std::pair<std::string, std::unique_ptr<PrototypeAST>>(decl->get_id(), std::move(decl)));
+    return save;
 }
 
-llvm::Function* FuncAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab)
+llvm::Function* FuncAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, 
+                std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls)
 {
-        llvm::Function* func = mod->getFunction(proto->get_id()); 
-        if(func == nullptr)
-                func = proto->gencode(ctx, mod, builder, symtab);
-        else
-                return func;
+        PrototypeAST& proto_ref = *proto;
+        decls->insert(std::pair<std::string, std::unique_ptr<PrototypeAST>>(proto_ref.get_id(), std::move(proto)));
+
+        llvm::Function* func = getFunction(ctx, mod, builder, symtab, decls, proto_ref.get_id());
 
         llvm::BasicBlock* bb = llvm::BasicBlock::Create(*ctx, "entry", func);
         builder->SetInsertPoint(bb);
@@ -109,7 +135,7 @@ llvm::Function* FuncAST::gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm
         for(auto& arg : func->args())
             (*symtab)[std::string(arg.getName())] = &arg;
 
-        llvm::Value* ret = expr->gencode(ctx, mod, builder, symtab);
+        llvm::Value* ret = expr->gencode(ctx, mod, builder, symtab, decls);
         symtab->clear();
 
         if(ret != nullptr)

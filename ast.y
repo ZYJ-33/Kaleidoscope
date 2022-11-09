@@ -77,11 +77,11 @@ funcs : func funcs {$2->push_back($1); $$ = $2;}
       | {$$ = std::unique_ptr<std::vector<std::unique_ptr<FuncAST>>>(new std::vector<std::unique_ptr<FuncAST>>());}
       ;
 
-func : proto expr {$$ = std::unique_ptr<FuncAST>(new FuncAST($1, $2));}
+func :DEF proto expr {$$ = std::unique_ptr<FuncAST>(new FuncAST($2, $3));}
      ;
 
 
-proto : DEF ID LEFT_PARA ids_with_comma RIGHT_PARA {$$ = std::unique_ptr<PrototypeAST>(new PrototypeAST($2, $4));}
+proto :ID LEFT_PARA ids_with_comma RIGHT_PARA {$$ = std::unique_ptr<PrototypeAST>(new PrototypeAST($1, $3));}
       ;
 
 ids_with_comma : ID ids_with_comma  {$2->push_back($1); $$=$2;}

@@ -1,6 +1,8 @@
 #include "driver.hh"
 #include "./llvm_driver.h"
 
+extern "C" double print_double(double x);
+
 int main(int argc, char** argv)
 {
     Driver d(argv[1]);
