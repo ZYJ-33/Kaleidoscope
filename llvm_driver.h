@@ -55,6 +55,9 @@ class LLVM_Driver
                     ctxs.emplace_back();
                     LLVM_Core_Context& last_ctx = ctxs[ctxs.size()-1];
 
+                    for(auto& func : *(this->funcs))
+                            func->output();
+
                     for(auto cur = this->decls->begin(); cur != this->decls->end(); cur++)
                         (*(*cur)).gencode((last_ctx.ctx.get()), (last_ctx.mod.get()), (last_ctx.builder.get()), &symtab, &func_decls);
 

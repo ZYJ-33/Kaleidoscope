@@ -3,13 +3,29 @@ LLVM_INCLUDE_PATH = /home/zhengyujia/build/include/
 LLVM_PARA = `llvm-config --libs`
 
 runtime:
-	g++ ./runtime.cc --shared -fPIC -o runtime.so
+	clang++ ./runtime.cc -g --shared -fPIC -o runtime.so
 
-build: runtime
+bison:
 	bison ./ast.y
+
+flex:
 	flex ./lexer.ll
-	clang++ $(LLVM_PARA) -g ./ast.tab.cc ./lex.yy.cc ./driver.cc ./runtime.so  -o res
+
+node.o:
+	clang++ -c -g ./node.cc -o node.o
+
+ast.o: 
+	clang++ -c -g ./ast.tab.cc -o ast.o
+
+lex.o:
+	clang++ -c -g ./lex.yy.cc -o lex.o
+
+driver.o:
+	clang++ -c -g ./driver.cc -o driver.o
+
+build:flex bison runtime ast.o lex.o driver.o node.o
+	clang++ $(LLVM_PARA) -g ./node.o ./ast.o ./lex.o ./driver.o ./runtime.so  -o res
 
 clean:
-	rm ast.tab.cc ast.tab.hh location.hh lex.yy.cc res
+	rm ast.tab.cc ast.tab.hh location.hh lex.yy.cc runtime.so res node.o ast.o lex.o driver.o
 

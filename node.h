@@ -4,6 +4,7 @@
 #include<string>
 #include<vector>
 #include<map>
+#include<iostream>
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/LLVMContext.h"
@@ -14,6 +15,8 @@ class AST
 {
        public:
             virtual ~AST() = default;
+
+            virtual void output() = 0;
 };
 
 class PrototypeAST : public AST
@@ -28,6 +31,14 @@ class PrototypeAST : public AST
         const std::string& get_id()
         {
             return *id;
+        }
+
+        void output()
+        {
+            std::cout<<"Prototype "<<*id<<"( ";
+            for(auto& para: *paras)
+                    std::cout<<" para ";
+            std::cout<<" )\n";
         }
 
         virtual llvm::Function* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder,
@@ -47,6 +58,14 @@ class AssignExprAST: public ExprAST
     std::unique_ptr<ExprAST> expr;
     AssignExprAST(std::unique_ptr<std::string> id, std::unique_ptr<ExprAST> expr) : id(std::move(id)), expr(std::move(expr))
     {}
+    
+    void output()
+    {
+        std::cout<<*id <<" = ";
+        expr->output();
+        std::cout<<std::endl;
+    }
+
     virtual llvm::Value* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls);
 };
 
@@ -56,6 +75,10 @@ class NumberExprAST : public ExprAST
         public:
             NumberExprAST(double val) : val(val) {}
         virtual llvm::Value* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls);
+        void output()
+        {
+            std::cout<<"num: "<<val<<std::endl;
+        }
 };
 
 class VariableExprAST : public ExprAST
@@ -64,6 +87,10 @@ class VariableExprAST : public ExprAST
         public:
             VariableExprAST(std::unique_ptr<std::string> id) : id(std::move(id)) {}
         virtual llvm::Value* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls);
+        void output()
+        {
+            std::cout<<"variable: "<<*id<<std::endl;
+        }
 };
 
 class BinOpExprAST: public ExprAST
@@ -76,7 +103,12 @@ class BinOpExprAST: public ExprAST
                     op(op), left(std::move(lhs)), right(std::move(rhs)) {}
 
         virtual llvm::Value* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls);
-
+        void output()
+        {
+            left->output();
+            std::cout<<" " <<op<<" ";
+            right->output();
+        }
 };
 
 class IfExprAST: public ExprAST
@@ -88,6 +120,13 @@ class IfExprAST: public ExprAST
                     condition(std::move(condi)), then_brach(std::move(then)){}
 
         virtual llvm::Value* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls);
+        void output()
+        {
+            std::cout<<" IF " <<std::endl;
+            condition->output();
+            std::cout<<" THEN "<<std::endl;
+            then_brach->output();
+        }
 };
 
 class IfElseExprAST: public ExprAST
@@ -100,6 +139,17 @@ class IfElseExprAST: public ExprAST
                     condition(std::move(condi)), then_brach(std::move(then)), else_brach(std::move(_else)) {}
 
         virtual llvm::Value* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls);
+
+        void output()
+        {
+            std::cout<<"IF"<<std::endl;
+            condition->output();
+            std::cout<<"THEN"<<std::endl;
+            then_brach->output();
+            std::cout<<"ELSE"<<std::endl;
+            else_brach->output();
+            std::cout<<std::endl;
+        }
 };
 
 class CallExprAST:  public ExprAST
@@ -112,10 +162,31 @@ class CallExprAST:  public ExprAST
             }
 
             virtual llvm::Value* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls);
+
+            void output()
+            {
+                std::cout<<"function call " << *id << " ( ";
+                for(auto& expr : *exprs)
+                        expr->output();
+            }
 };
 
+class ForExprAST: public ExprAST
+{
+        std::unique_ptr<std::string> id;
+        std::unique_ptr<ExprAST> init;
+        std::unique_ptr<ExprAST> condition;
+        std::unique_ptr<ExprAST> step;
+        std::unique_ptr<ExprAST> body;
+        public:
+            ForExprAST(std::unique_ptr<std::string> id, std::unique_ptr<ExprAST> init, std::unique_ptr<ExprAST> condi, std::unique_ptr<ExprAST> step, std::unique_ptr<ExprAST> body):
+                    id(std::move(id)), init(std::move(init)), condition(std::move(condi)), step(std::move(step)), body(std::move(body)){}
 
+            virtual llvm::Value* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls);
 
+           void output()
+           {} 
+};
 
 class DeclAST:public AST
 {
@@ -125,6 +196,8 @@ class DeclAST:public AST
                 DeclAST(std::unique_ptr<PrototypeAST> decl): decl(std::move(decl)){}
                 virtual llvm::Function* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, 
                                                 std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls);
+                void output()
+                {}
 
 };
 
@@ -140,5 +213,12 @@ class FuncAST: public AST
 
     virtual llvm::Function* gencode(llvm::LLVMContext* ctx, llvm::Module* mod, llvm::IRBuilder<>* builder, 
                                     std::map<std::string, llvm::Value*>* symtab, std::map<std::string, std::unique_ptr<PrototypeAST>>* decls);
+
+    void output()
+    {
+        proto->output();
+        std::cout<<std::endl;
+        expr->output();
+    }
 };
 #endif

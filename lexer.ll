@@ -19,17 +19,22 @@ blank [ \t\r]
 %%
 "("         {return yy::parser::make_LEFT_PARA();}
 ")"         {return yy::parser::make_RIGHT_PARA();}
+"{"         {return yy::parser::make_LEFT_BRACK();}
+"}"         {return yy::parser::make_RIGHT_BRACK();}
 "def"       {return yy::parser::make_DEF();}
 "extern"    {return yy::parser::make_EXTERN();}
 "if"        {return yy::parser::make_IF();}
-"fi"        {return yy::parser::make_FI();}
 "then"      {return yy::parser::make_THEN();}
 "else"      {return yy::parser::make_ELSE();}
 ","         {return yy::parser::make_COMMA();}
+"<"         {return yy::parser::make_LESS('<');}
 "=="        {return yy::parser::make_EQUAL('E');}
 "!="        {return yy::parser::make_UNEQUAL('U');}
+"="         {return yy::parser::make_ASSIGN();}
+"in"        {return yy::parser::make_IN();}
 "and"       {return yy::parser::make_AND('&');}
 "or"        {return yy::parser::make_OR('|');}
+"for"       {return yy::parser::make_FOR();}
 "*"         {return yy::parser::make_TIME('*');}
 "/"         {return yy::parser::make_DIV('/');}
 "+"                         {return yy::parser::make_ADD('+');}
