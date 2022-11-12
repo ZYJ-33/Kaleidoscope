@@ -22,6 +22,7 @@ blank [ \t\r]
 "{"         {return yy::parser::make_LEFT_BRACK();}
 "}"         {return yy::parser::make_RIGHT_BRACK();}
 "def"       {return yy::parser::make_DEF();}
+"let"       {return yy::parser::make_LET();}
 "extern"    {return yy::parser::make_EXTERN();}
 "if"        {return yy::parser::make_IF();}
 "then"      {return yy::parser::make_THEN();}

@@ -36,7 +36,7 @@ class LLVM_Driver
 {
     public:
             std::vector<LLVM_Core_Context> ctxs;
-            std::map<std::string, llvm::Value*> symtab;
+            std::map<std::string, llvm::AllocaInst*> symtab;
             std::unique_ptr<std::vector<std::unique_ptr<FuncAST>>> funcs; 
             std::unique_ptr<std::vector<std::unique_ptr<DeclAST>>> decls;
             std::map<std::string, std::unique_ptr<PrototypeAST>> func_decls;

@@ -47,6 +47,7 @@
 %token LEFT_BRACK
 %token RIGHT_BRACK
 %token ASSIGN
+%token LET
 %token<char> TIME DIV ADD SUB AND OR EQUAL UNEQUAL LESS
 
 %nterm<std::unique_ptr<std::vector<std::unique_ptr<FuncAST>>>> funcs
@@ -57,6 +58,9 @@
 %nterm<std::unique_ptr<std::vector<std::unique_ptr<std::string>>>> ids_with_comma
 %nterm<std::unique_ptr<DeclAST>> decl
 %nterm<std::unique_ptr<std::vector<std::unique_ptr<DeclAST>>>> decls
+%nterm<std::unique_ptr<std::vector<std::unique_ptr<LocalVarExprAST>>>> local_vars
+%nterm<std::unique_ptr<std::vector<std::unique_ptr<LocalVarExprAST>>>> local_var_decls
+%nterm<std::unique_ptr<LocalVarExprAST>> local_var_decl
 
 %left LESS
 %right ASSIGN
@@ -82,9 +86,19 @@ funcs : func funcs {$2->push_back($1); $$ = $2;}
       | {$$ = std::unique_ptr<std::vector<std::unique_ptr<FuncAST>>>(new std::vector<std::unique_ptr<FuncAST>>());}
       ;
 
-func :DEF proto expr {$$ = std::unique_ptr<FuncAST>(new FuncAST($2, $3));}
+func :DEF proto local_vars expr {$$ = std::unique_ptr<FuncAST>(new FuncAST($2, $3, $4));}
      ;
 
+local_vars : LET local_var_decls IN {$$ = $2;}
+           | {$$ = nullptr;}
+           ;
+
+local_var_decls : local_var_decl local_var_decls {$$ = $2; $$->push_back($1);}
+                | {$$ = std::unique_ptr<std::vector<std::unique_ptr<LocalVarExprAST>>>(new std::vector<std::unique_ptr<LocalVarExprAST>>());}
+                ;
+
+local_var_decl : ID ASSIGN expr {$$ = std::unique_ptr<LocalVarExprAST>(new LocalVarExprAST($1, $3));}
+               ;
 
 proto :ID LEFT_PARA ids_with_comma RIGHT_PARA {$$ = std::unique_ptr<PrototypeAST>(new PrototypeAST($1, $3));}
       ;
@@ -96,6 +110,7 @@ ids_with_comma : ID ids_with_comma  {$2->push_back($1); $$=$2;}
 
 expr : ID {$$ = std::unique_ptr<VariableExprAST>(new VariableExprAST($1));}
      | NUM {$$ = std::unique_ptr<NumberExprAST>(new NumberExprAST($1));}
+     | ID ASSIGN expr {$$ = std::unique_ptr<AssignExprAST>(new AssignExprAST($1, $3));}
      | expr LESS expr {$$ = std::unique_ptr<BinOpExprAST>(new BinOpExprAST($2, $1, $3));}
      | expr TIME expr{$$ = std::unique_ptr<BinOpExprAST>(new BinOpExprAST($2, $1, $3));}
      | expr DIV expr {$$ = std::unique_ptr<BinOpExprAST>(new BinOpExprAST($2, $1, $3));}

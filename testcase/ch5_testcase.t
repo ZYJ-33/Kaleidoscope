@@ -1,7 +1,7 @@
 extern print_double(d)
 
 def main()
-    fib(50)
+    fib(4)
 
 def fib(x)
     if (x==0 or x==1) then
